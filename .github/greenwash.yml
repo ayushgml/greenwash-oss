@@ -1,0 +1,7 @@
+# Greenwash reviews its own pull requests.
+mode: comment
+ignore_paths:
+  # These files contain deliberate greenwashing examples as test data.
+  - "evals/cases.py"
+  - "tests/fakes.py"
+  - "tests/fixtures/**"

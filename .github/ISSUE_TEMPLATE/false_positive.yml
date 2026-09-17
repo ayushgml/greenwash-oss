@@ -1,0 +1,44 @@
+name: False positive or missed problem
+description: Greenwash flagged a legitimate change, or missed a real one.
+labels: ["accuracy"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Real examples are the most valuable input for improving checks. Please remove anything private from the diff before posting.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What happened?
+      options:
+        - Flagged a legitimate change (false positive)
+        - Missed a real problem (false negative)
+    validations:
+      required: true
+  - type: input
+    id: check
+    attributes:
+      label: Check ID
+      description: For example `weakened_assertion`. Leave empty for a missed problem if unsure.
+      placeholder: weakened_assertion
+  - type: input
+    id: probability
+    attributes:
+      label: Reported probability
+      description: From the report comment, if the change was flagged.
+      placeholder: "87%"
+  - type: textarea
+    id: diff
+    attributes:
+      label: Diff hunk
+      description: The smallest hunk that reproduces it, including the `@@` header and file path.
+      render: diff
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Pull request description and context
+      description: The PR description matters for some checks (for example `rewritten_expectation`). Explain why the change is or isn't a problem.
+    validations:
+      required: true

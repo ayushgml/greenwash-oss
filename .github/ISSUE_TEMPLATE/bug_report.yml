@@ -1,0 +1,36 @@
+name: Bug report
+description: Something in Greenwash doesn't work as documented.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or check run output
+      description: Remove secrets, private code, and tokens.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Greenwash version or commit
+  - type: dropdown
+    id: hosting
+    attributes:
+      label: How are you running Greenwash?
+      options:
+        - Docker
+        - Railway
+        - Other host
+        - Local development

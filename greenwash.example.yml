@@ -1,0 +1,23 @@
+# Copy to .github/greenwash.yml in the repository you want to protect.
+# Greenwash reads this file from the pull request's base commit.
+
+# comment: report findings but never fail the check (default)
+# check:   fail the check when a critical finding is flagged
+mode: comment
+
+# Files to skip entirely. `**` matches any number of folders.
+ignore_paths:
+  - "docs/**"
+  - "**/*.md"
+
+# Built-in checks or rules to turn off, e.g. swallowed_error, deleted_test_file, custom:billing
+disabled_checks: []
+
+# Your own plain-English checks. "Yes" must mean "this needs a human look".
+rules:
+  - id: billing
+    title: Billing logic changed
+    question: "Does `hunk.diff` change how customers are charged, refunded, or invoiced?"
+    applies_to: [source]
+    severity: warning
+    threshold: 0.8

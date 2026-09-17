@@ -1,0 +1,52 @@
+[project]
+name = "greenwash"
+version = "0.1.0"
+description = "A GitHub App that catches AI coding agents cheating to make CI green."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Ayush Gupta" }]
+keywords = ["github-app", "code-review", "ai-agents", "testing", "ci", "typesafe"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.141",
+    "githubkit[auth-app]>=0.16",
+    "pydantic>=2.13",
+    "pyyaml>=6.0",
+    "typesafe-sdk>=0.6.0,<0.7",
+    "uvicorn>=0.53",
+]
+
+[project.urls]
+Homepage = "https://github.com/ayushgml/greenwash-oss"
+Documentation = "https://github.com/ayushgml/greenwash-oss/tree/main/docs"
+Issues = "https://github.com/ayushgml/greenwash-oss/issues"
+Changelog = "https://github.com/ayushgml/greenwash-oss/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28",
+    "pytest>=9.1",
+    "pytest-asyncio>=1.4",
+    "respx>=0.23",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.10,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = ["-m", "not live"]
+markers = ["live: calls the real TypeSafe API (needs TYPESAFE_API_KEY)"]

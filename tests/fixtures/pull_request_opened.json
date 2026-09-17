@@ -1,0 +1,17 @@
+{
+  "action": "opened",
+  "number": 7,
+  "pull_request": {
+    "number": 7,
+    "state": "open",
+    "title": "Fix cart total",
+    "body": "Fixes rounding in cart totals.",
+    "draft": false,
+    "user": {"login": "coding-agent[bot]", "type": "Bot"},
+    "head": {"ref": "agent/fix-cart-total", "sha": "head-sha"},
+    "base": {"ref": "main", "sha": "base-sha"}
+  },
+  "repository": {"name": "shop", "full_name": "acme/shop", "owner": {"login": "acme"}},
+  "installation": {"id": 4242},
+  "sender": {"login": "coding-agent[bot]", "type": "Bot"}
+}

@@ -1,0 +1,21 @@
+name: Feature request
+description: Suggest a new check, integration, or improvement.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation, for example a kind of greenwashing Greenwash doesn't catch today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example diffs
+      description: For new checks, include an example that should be flagged and a similar one that shouldn't.
+      render: diff
