@@ -282,7 +282,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.141" },
-    { name = "githubkit", extras = ["auth-app"], specifier = ">=0.16" },
+    { name = "githubkit", extras = ["auth-app"], specifier = ">=0.16.1" },
     { name = "pydantic", specifier = ">=2.13" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "typesafe-sdk", specifier = ">=0.6.0,<0.7" },
