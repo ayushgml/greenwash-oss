@@ -6,6 +6,8 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue.svg)
 
+**Case study and demo video: [itsayush.dev/work/greenwash](https://itsayush.dev/work/greenwash)**
+
 When a coding agent can't fix a failing build, it sometimes makes the build pass anyway. It
 weakens an assertion, skips the test, hard-codes the answer the test expects, or marks the CI
 step as non-blocking. The build turns green and the reviewer moves on.
