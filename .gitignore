@@ -3,3 +3,12 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .env
+
+# Local planning/instruction files (not committed)
+/PRD.md
+/AGENT.md
+/CLAUDE.md
+
+# Greenwash Live run records and browser-test screenshots (local only)
+/live/runs/
+/.playwright-mcp/
