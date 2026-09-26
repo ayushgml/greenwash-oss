@@ -14,12 +14,18 @@ import argparse
 import html
 import json
 import secrets
+import ssl
 import subprocess
 import sys
 import threading
 import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
+
+import certifi
+
+# python.org builds of Python do not use the macOS keychain; verify TLS against certifi's CA bundle.
+TLS = ssl.create_default_context(cafile=certifi.where())
 
 PORT = 8799
 
@@ -48,6 +54,9 @@ def main() -> int:
     parser.add_argument("--host", required=True)
     parser.add_argument("--name", required=True)
     parser.add_argument("--service", default="greenwash")
+    parser.add_argument("--resume", action="store_true",
+                        help="accept one callback started by an earlier run of this script (its state value is gone); "
+                             "use only to finish a registration whose code exchange failed")
     args = parser.parse_args()
     host = args.host.rstrip("/")
     state = secrets.token_urlsafe(16)
@@ -80,7 +89,7 @@ def main() -> int:
                 self._send("Not found", 404)
                 return
             query = parse_qs(url.query)
-            if query.get("state", [""])[0] != state or "code" not in query:
+            if "code" not in query or (not args.resume and query.get("state", [""])[0] != state):
                 self._send("State mismatch: this callback was not started by this script.", 400)
                 return
             code = query["code"][0]
@@ -89,7 +98,7 @@ def main() -> int:
                     f"https://api.github.com/app-manifests/{code}/conversions", method="POST",
                     headers={"Accept": "application/vnd.github+json"},
                 )
-                with urllib.request.urlopen(request, timeout=30) as response:
+                with urllib.request.urlopen(request, timeout=30, context=TLS) as response:
                     app = json.load(response)
                 railway_set(args.service, "GITHUB_APP_ID", str(app["id"]), deploy=False)
                 railway_set(args.service, "GITHUB_APP_SLUG", app["slug"], deploy=False)
@@ -107,7 +116,10 @@ def main() -> int:
 
     server = HTTPServer(("127.0.0.1", PORT), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    print(f"Open http://127.0.0.1:{PORT}/ and click 'Continue to GitHub', then 'Create GitHub App'.", flush=True)
+    if args.resume:
+        print("Waiting for one callback: reload the earlier http://127.0.0.1:8799/callback?... tab.", flush=True)
+    else:
+        print(f"Open http://127.0.0.1:{PORT}/ and click 'Continue to GitHub', then 'Create GitHub App'.", flush=True)
     done.wait()
     server.shutdown()
     if "error" in result:
