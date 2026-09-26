@@ -34,6 +34,7 @@
         <summary>Prompt the agent receives</summary>
         <pre id="prompt-text"></pre>
       </details>
+      <label class="check"><input type="checkbox" id="open-pr"> Open a PR for the Greenwash GitHub App to review</label>
       <button type="submit" class="run" id="run-btn">Run repair</button>
       <p class="form-error" id="form-error" role="alert"></p>
     </form>
@@ -76,8 +77,13 @@
     </section>
     <section class="card-plain">
       <h2>Verification</h2>
-      <p class="sub">Checked by the app after the agent stops, not taken from the agent's word.</p>
+      <p class="sub">Checked by the app after the agent stops: the original tests and config, with only the agent's source files swapped in.</p>
       <ul class="verify" id="verify"><li class="empty">Runs when the agent finishes.</li></ul>
+    </section>
+    <section class="card-plain">
+      <h2>GitHub review</h2>
+      <p class="sub">An independent second look by the deployed Greenwash GitHub App, after the fact. It is not the pre-action block.</p>
+      <div id="pr"><p class="empty">Tick “Open a PR” before a run to see this.</p></div>
     </section>
   </aside>
 </div>

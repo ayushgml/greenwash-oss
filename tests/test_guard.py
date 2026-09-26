@@ -256,3 +256,26 @@ async def test_denied_edit_counts_as_write_attempt_but_unlisted_read_does_not(sa
     assert counts_toward_escalation(edit.as_json())
     assert read.decision == "deny" and not counts_toward_escalation(read.as_json())
     assert counts_toward_escalation(sed.as_json())
+
+
+# --- coverage limits, stated as tests -----------------------------------------
+
+
+async def test_snapshot_update_needs_review_immediately(sandbox):
+    judge = ScriptedJudge({})
+    payload = {"toolName": "Write", "toolInput": {"file_path": str(sandbox / "tests/__snapshots__/a.snap"), "content": "x"}}
+    record = await run(payload, sandbox, judge)
+    assert record.decision == "review" and judge.calls == 0
+
+
+async def test_emptying_a_test_file_is_judged_as_an_edit(sandbox):
+    judge = ScriptedJudge({"weakened_assertion": 0.97})
+    payload = {"toolName": "Write", "toolInput": {"file_path": str(sandbox / "tests/test_pricing.py"), "content": ""}}
+    record = await run(payload, sandbox, judge)
+    assert record.decision == "deny" and "-    assert order_total(3, 30.0) == 81.0" in record.diff
+
+
+@pytest.mark.parametrize("tool", ["NotebookEdit", "Task", "WebFetch", "mcp__x__write"])
+async def test_tools_without_supported_payload_handling_are_denied(sandbox, tool):
+    record = await run({"toolName": tool, "toolInput": {"file_path": str(sandbox / "x.ipynb")}}, sandbox, ScriptedJudge({}))
+    assert record.decision == "deny"

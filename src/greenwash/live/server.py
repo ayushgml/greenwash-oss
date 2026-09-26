@@ -28,6 +28,7 @@ REPLAY_MAX_GAP_S = 1.2
 class RunRequest(BaseModel):
     scenario: str
     mode: str = "natural"
+    open_pr: bool = False
 
 
 def _version(args: list[str]) -> str | None:
@@ -85,7 +86,8 @@ def create_app(judge_factory: Callable[[], Judge]) -> FastAPI:
             raise HTTPException(422, f"mode must be one of {', '.join(MODES)}")
         if busy():
             raise HTTPException(409, "A run is already in progress. Wait for it to finish.")
-        runner = Runner(catalog[request.scenario], request.mode, judge_factory)  # type: ignore[arg-type]
+        runner = Runner(catalog[request.scenario], request.mode, judge_factory,  # type: ignore[arg-type]
+                        open_pr=request.open_pr)
         state["runner"], state["task"] = runner, asyncio.create_task(runner.run())
         return {"run_id": runner.run_id}
 

@@ -12,7 +12,8 @@ const MODE_NOTES = {
   lookalike: "A legitimate edit that looks similar. It must be allowed.",
 };
 const STATE_TEXT = { allow: "Allowed", deny: "Denied by Failproof", review: "Denied: needs human review", error: "Denied: judgment failed" };
-const STATUS_TEXT = { repaired: "Repaired", not_repaired: "Not repaired", needs_human: "Needs human", error: "Error", running: "Running", replaying: "Replaying" };
+const STATUS_TEXT = { repaired: "Repaired", not_repaired: "Not repaired", needs_human: "Needs human", setup_error: "Setup error",
+                      error: "Error", running: "Running", replaying: "Replaying" };
 
 function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
@@ -59,7 +60,8 @@ async function loadScenarios() {
 }
 
 function currentChoice() {
-  return { scenario: $("scenario").value, mode: document.querySelector('input[name="mode"]:checked')?.value ?? "natural" };
+  return { scenario: $("scenario").value, mode: document.querySelector('input[name="mode"]:checked')?.value ?? "natural",
+           open_pr: $("open-pr").checked };
 }
 function updatePrompt() {
   const { scenario, mode } = currentChoice();
@@ -129,6 +131,7 @@ function resetView() {
   $("bars").replaceChildren(); $("jev-sub").textContent = "Select a judged edit in the timeline.";
   $("activity").replaceChildren(h("li", { class: "empty", text: "No hook activity yet." }));
   $("verify").replaceChildren(h("li", { class: "empty", text: "Runs when the agent finishes." }));
+  $("pr").replaceChildren(h("p", { class: "empty", text: "No pull request for this run." }));
   $("log-count").textContent = "";
 }
 
@@ -192,11 +195,12 @@ const PHASES = {
   route: "Starting the coding agent…",
   attempt_started: "Agent is working. Each risky edit is judged by Jev before it runs…",
   attempt_finished: "Verifying against the original tests…",
+  verification: null,
   escalation: "Resetting for the escalated attempt…",
 };
 
 function handle(ev) {
-  if (!S.replay && PHASES[ev.type]) setPhase(PHASES[ev.type]);
+  if (!S.replay && ev.type in PHASES) setPhase(PHASES[ev.type]);
   if (ev.type === "run_finished" || ev.type === "error" || ev.type === "stream_end") setPhase(null);
   switch (ev.type) {
     case "stream":
@@ -233,14 +237,34 @@ function handle(ev) {
     case "failproof_entry": return addActivity([ev.entry]);
     case "failproof_activity": return addActivity(ev.entries);
     case "escalation":
-      addStep("error", "!", h("div", { class: "banner warn", text: ev.action === "rerun"
-        ? `Escalated: ${ev.reason}.` : `Stopped for human review: ${ev.reason}.` }));
+      addStep("error", "!", h("div", { class: ev.action === "setup_error" ? "banner error" : "banner warn",
+        text: ev.action === "rerun" ? `Escalated: ${ev.reason}. The new attempt is told which edits were refused.`
+            : ev.action === "setup_error" ? `Setup error: ${ev.reason}.` : `Stopped for human review: ${ev.reason}.` }));
+      return;
+    case "stale_agent_stopped":
+      addStep("muted", "·", h("p", { class: "note quiet", text: `Stopped an agent left over from an earlier run (process group ${ev.pgid}) before resetting.` }));
       return;
     case "attempt_finished":
       if (ev.stopped) addStep("muted", "·", h("p", { class: "note quiet", text: `Attempt ${ev.attempt} stopped: ${ev.stopped}.` }));
       else if (ev.exit !== 0) addStep("error", "!", h("div", { class: "banner error", text: `The agent exited with status ${ev.exit}. ${ev.stderr || ""}` }));
       return;
     case "verification": return onVerification(ev);
+    case "pr_opened":
+      setPhase(S.replay ? null : "Waiting for the Greenwash GitHub App to review the pull request…");
+      $("pr").replaceChildren(h("p", {}, "Opened ", h("a", { href: ev.url, target: "_blank", rel: "noopener", text: `${ev.repo}#${ev.number}` }), "."),
+        h("p", { class: "note quiet", text: "Waiting for the Greenwash check…" }));
+      return;
+    case "pr_review": {
+      const conclusion = ev.conclusion ?? ev.state;
+      const text = ev.state === "missing" ? ev.detail : `Greenwash check: ${conclusion}${ev.title ? `. ${ev.title}` : ""}`;
+      $("pr").querySelector(".note")?.remove();
+      $("pr").append(h("p", { text }));
+      if (ev.check_url) $("pr").append(h("p", {}, h("a", { href: ev.check_url, target: "_blank", rel: "noopener", text: "Open the check run" })));
+      if (ev.comment_url) $("pr").append(h("p", {}, h("a", { href: ev.comment_url, target: "_blank", rel: "noopener", text: "Open the report comment" })));
+      return;
+    }
+    case "pr_skipped": $("pr").replaceChildren(h("p", { class: "empty", text: ev.reason })); return;
+    case "pr_error": $("pr").replaceChildren(h("p", { class: "n", text: `Pull request failed: ${ev.message}` })); return;
     case "error":
       addStep("error", "!", h("div", { class: "banner error", text: ev.message }));
       return;
@@ -347,7 +371,8 @@ function onVerification(v) {
   const blockedCount = v.blocked.length;
   $("verify").replaceChildren(
     row(v.original_tests_pass, `Original tests: ${v.original_tests.summary || (v.original_tests_pass ? "passed" : "failed")}`),
-    row(v.tests_changed.length === 0, v.tests_changed.length ? `Test files changed: ${v.tests_changed.join(", ")}` : "Test files unchanged"),
+    row(v.infra_changed.length === 0, v.infra_changed.length
+      ? `Tests/config changed (ignored for the check above): ${v.infra_changed.join(", ")}` : "Tests, pytest config and CI unchanged"),
     row(v.blocked_content_absent, blockedCount ? `Blocked content absent from disk (${blockedCount} checked)` : "No blocked edits to check"),
     row(v.agent_suite.passed, `Agent's own suite: ${v.agent_suite.summary}`));
   const ok = v.original_tests_pass;

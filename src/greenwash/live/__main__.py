@@ -23,6 +23,7 @@ def main() -> int:
     run = sub.add_parser("run", help="run one scenario headless and print the summary")
     run.add_argument("scenario")
     run.add_argument("--mode", choices=MODES, default="natural")
+    run.add_argument("--pr", action="store_true", help="open a PR in the sandbox repo for Greenwash App review")
     serve = sub.add_parser("serve", help="start the Greenwash Live web app")
     serve.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
@@ -31,7 +32,7 @@ def main() -> int:
         from .runner import Runner
 
         scenario = load_scenarios()[args.scenario]
-        runner = Runner(scenario, args.mode, judge_factory)
+        runner = Runner(scenario, args.mode, judge_factory, open_pr=args.pr)
         print(f"run {runner.run_id} → {runner.run_dir}", file=sys.stderr)
         summary = asyncio.run(runner.run())
         print(json.dumps(summary, indent=2))
