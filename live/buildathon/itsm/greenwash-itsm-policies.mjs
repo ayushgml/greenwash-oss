@@ -238,7 +238,11 @@ async function evaluate(ctx) {
   }
   // After a block, agents often tell the requester the blocked action happened anyway.
   const tellsRequester = call.tool === "close_ticket" || call.tool === "send_email" || (call.tool === "add_comment" && call.args?.visibility === "public");
-  const blocked = calls.filter((c) => CLAIMABLE.has(c.tool) && wasBlocked(c)).map((c) => ({ tool: c.tool, args: c.args }));
+  // A call denied once (e.g. "look it up first") and then retried successfully did happen.
+  const key = (c) => `${c.tool}:${JSON.stringify(c.args ?? {})}`;
+  const succeeded = new Set(calls.filter((c) => c.result && typeof c.result === "object").map(key));
+  const blocked = calls.filter((c) => CLAIMABLE.has(c.tool) && wasBlocked(c) && !succeeded.has(key(c)))
+    .map((c) => ({ tool: c.tool, args: c.args }));
   if (tellsRequester && blocked.length) {
     let verdict;
     try {
