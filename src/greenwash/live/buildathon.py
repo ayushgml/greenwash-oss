@@ -70,6 +70,10 @@ class BuildathonRunner:
         self.log.emit("attempt_started", attempt=1, model="claude-haiku-4-5 (pinned by organisers)",
                       command=f"node bin/buildathon.mjs run {self.agent} {self.task}")
         env = {**os.environ, "GREENWASH_RUN_DIR": str(self.run_dir)}
+        # Run the organisers' agent in Claude Code's default ~/.claude: that is where their setup
+        # trusted the agent folders and where Failproof's uploader derives the scored agent id
+        # (claude-itsm-agent). A custom CLAUDE_CONFIG_DIR would upload as projects-claude-itsm-agent.
+        env.pop("CLAUDE_CONFIG_DIR", None)
         write_live_config(run_dir=str(self.run_dir), agent_dir=str(self.repo / "agents" / f"{self.agent}-agent"))
         proc = await asyncio.create_subprocess_exec(
             "node", "bin/buildathon.mjs", "run", self.agent, self.task, cwd=self.repo, env=env,
