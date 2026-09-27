@@ -87,6 +87,16 @@ is not a live save; present it as a recording.
 | Agent edits tests, `conftest.py`, pytest config or CI | Reported. The authoritative check always runs the original tests and config with only the agent's source files swapped in. |
 | A second run starts while one is active (web app or CLI) | Refused by a lock on `live/runs/sandbox.lock`; a leftover agent from a crashed run is killed before any reset. |
 
+## Using the guard outside Greenwash Live
+
+The Failproof policy and `python -m greenwash.guard` work in any Claude Code repository. Copy
+`live/failproof/greenwash-guard-policies.mjs` into that repo's `.failproofai/policies/`, install the
+project hooks (`failproofai policies --install block-sudo --cli claude --scope project`), and start
+Claude Code with `GREENWASH_PYTHON=<this repo>/.venv/bin/python` and `TYPESAFE_API_KEY` set. Without a
+Greenwash Live run, the guard judges each edit against the operator's own prompts from the session
+transcript (the idea behind `userPrompts` in the Jev Buildathon `policykit`) and logs decisions to
+`~/.greenwash/guard/decisions.jsonl` (override with `GREENWASH_GUARD_LOG`). With no readable prompt it denies.
+
 ## Known limits
 
 - Coverage is "all applicable checks on supported edits": the PR scanner's two code rules are not reproduced per edit.

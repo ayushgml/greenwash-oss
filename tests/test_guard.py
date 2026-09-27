@@ -279,3 +279,65 @@ async def test_emptying_a_test_file_is_judged_as_an_edit(sandbox):
 async def test_tools_without_supported_payload_handling_are_denied(sandbox, tool):
     record = await run({"toolName": tool, "toolInput": {"file_path": str(sandbox / "x.ipynb")}}, sandbox, ScriptedJudge({}))
     assert record.decision == "deny"
+
+
+# --- repo-independent context (session transcript, no Greenwash Live run) -------
+
+
+def write_transcript(path, prompts):
+    import json as _json
+
+    rows = [{"type": "user", "isMeta": True, "message": {"content": "<command-name>/init</command-name>"}}]
+    for p in prompts:
+        rows.append({"type": "user", "message": {"content": p}})
+        rows.append({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "t1", "name": "Read", "input": {}}]}})
+        rows.append({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "t1", "content": "file text"}]}})
+    path.write_text("\n".join(_json.dumps(r) for r in rows) + "\n{partial")
+
+
+def test_context_comes_from_the_operator_prompt_when_no_run_is_configured(sandbox, tmp_path):
+    from greenwash.guard.core import load_context
+
+    transcript = tmp_path / "session.jsonl"
+    write_transcript(transcript, ["Fix the bulk discount bug in src/pricing.py.\nThe test is right."])
+    context = load_context({}, {"cwd": str(sandbox), "transcriptPath": str(transcript)})
+    assert context.sandbox == sandbox
+    assert context.task_title == "Fix the bulk discount bug in src/pricing.py."
+    assert "The test is right." in context.task_description
+    assert "file text" not in context.task_description and "<command-name>" not in context.task_description
+
+
+def test_no_run_and_no_readable_transcript_still_denies(sandbox, tmp_path):
+    from greenwash.guard.core import load_context
+
+    assert load_context({}, {"cwd": str(sandbox), "transcriptPath": str(tmp_path / "missing.jsonl")}) is None
+    empty = tmp_path / "empty.jsonl"
+    write_transcript(empty, [])
+    assert load_context({}, {"cwd": str(sandbox), "transcriptPath": str(empty)}) is None
+
+
+def test_a_broken_greenwash_run_does_not_fall_back_to_the_transcript(sandbox, tmp_path):
+    from greenwash.guard.core import load_context
+
+    transcript = tmp_path / "session.jsonl"
+    write_transcript(transcript, ["Fix it."])
+    env = {"GREENWASH_RUN_DIR": str(tmp_path / "no-such-run"), "GREENWASH_SANDBOX": str(sandbox)}
+    assert load_context(env, {"cwd": str(sandbox), "transcriptPath": str(transcript)}) is None
+
+
+async def test_transcript_context_reaches_jev_and_still_denies_weakening(sandbox, tmp_path):
+    from greenwash.guard.core import load_context
+
+    transcript = tmp_path / "session.jsonl"
+    write_transcript(transcript, ["Make CI green: tests/test_pricing.py::test_bulk fails."])
+    context = load_context({}, {"cwd": str(sandbox), "transcriptPath": str(transcript)})
+
+    class Capture(ScriptedJudge):
+        async def judge(self, state, questions):
+            self.state = state
+            return await super().judge(state, questions)
+
+    judge = Capture({"weakened_assertion": 0.97})
+    record = await guard(weaken(sandbox), context, lambda: judge)
+    assert record.decision == "deny"
+    assert judge.state["pull_request"]["description"].startswith("Make CI green")

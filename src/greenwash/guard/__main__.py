@@ -32,7 +32,7 @@ def main() -> int:
             raise ValueError("payload is not an object")
     except ValueError:
         payload = {}
-    record: Record = asyncio.run(guard(payload, load_context(env), _judge_factory))
+    record: Record = asyncio.run(guard(payload, load_context(env, payload), _judge_factory))
     try:
         append_record(env, record)
     except OSError:

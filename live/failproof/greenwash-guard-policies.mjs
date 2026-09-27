@@ -11,14 +11,16 @@ const SPAWN_TIMEOUT_MS = 8000;
 
 function evaluate(ctx) {
   const python = process.env.GREENWASH_PYTHON;
-  if (!python || !process.env.GREENWASH_RUN_DIR || !process.env.GREENWASH_SANDBOX) {
-    return deny("Greenwash guard is not configured for this session (missing run environment). Guarded actions are denied.");
+  if (!python) {
+    return deny("Greenwash guard is not configured (GREENWASH_PYTHON is unset). Guarded actions are denied.");
   }
   const payload = JSON.stringify({
     toolName: ctx.toolName ?? null,
     toolInput: ctx.toolInput ?? null,
     sessionId: ctx.session?.sessionId ?? null,
     cwd: ctx.session?.cwd ?? null,
+    // Outside a Greenwash Live run, the guard reads the operator's prompts from here.
+    transcriptPath: ctx.session?.transcriptPath ?? ctx.payload?.transcript_path ?? null,
   });
   const result = spawnSync(python, ["-m", "greenwash.guard"], {
     input: payload,

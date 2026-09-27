@@ -161,20 +161,71 @@ async def guard(
     return _finish(record, decide(checks, scores, proposal.path))
 
 
-def load_context(env: dict[str, str]) -> RunContext | None:
-    run_dir, sandbox = env.get("GREENWASH_RUN_DIR"), env.get("GREENWASH_SANDBOX")
-    if not run_dir or not sandbox:
-        return None
+MAX_PROMPT_CHARS = 4000
+
+
+def transcript_prompts(path: str | Path) -> list[str]:
+    """What the operator typed in this Claude Code session, oldest first.
+
+    Tool results (also stored as "user" rows) and harness notes such as slash-command
+    tags are skipped. The same idea as `userPrompts` in the Jev Buildathon policykit.
+    """
     try:
-        run = json.loads((Path(run_dir) / "run.json").read_text())
-        return RunContext(Path(sandbox), str(run["task_title"]), str(run["task_description"]))
-    except (OSError, ValueError, KeyError):
+        lines = Path(path).read_text(errors="replace").splitlines()
+    except OSError:
+        return []
+    prompts: list[str] = []
+    for line in lines:
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue  # a partially written last line
+        if not isinstance(row, dict) or row.get("type") != "user" or row.get("isMeta"):
+            continue
+        content = (row.get("message") or {}).get("content")
+        if isinstance(content, list):
+            content = "\n".join(b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text")
+        if isinstance(content, str) and content.strip() and not content.lstrip().startswith("<"):
+            prompts.append(content.strip())
+    return prompts
+
+
+def load_context(env: dict[str, str], payload: dict[str, Any] | None = None) -> RunContext | None:
+    """Task context for Jev, or None (the guard then denies).
+
+    A Greenwash Live run supplies it explicitly. Any other Claude Code session falls back to
+    its own working directory and the operator's prompts, so the guard is not tied to a repo.
+    """
+    run_dir, sandbox = env.get("GREENWASH_RUN_DIR"), env.get("GREENWASH_SANDBOX")
+    if run_dir or sandbox:  # explicitly configured: never fall back if that config is broken
+        if not run_dir or not sandbox:
+            return None
+        try:
+            run = json.loads((Path(run_dir) / "run.json").read_text())
+            return RunContext(Path(sandbox), str(run["task_title"]), str(run["task_description"]))
+        except (OSError, ValueError, KeyError):
+            return None
+    payload = payload or {}
+    cwd, transcript = payload.get("cwd"), payload.get("transcriptPath")
+    if not isinstance(cwd, str) or not isinstance(transcript, str):
         return None
+    prompts = transcript_prompts(transcript)
+    if not prompts:
+        return None
+    description = "\n\n".join(prompts)[-MAX_PROMPT_CHARS:]
+    title = prompts[0].splitlines()[0][:120]
+    return RunContext(Path(cwd), title, description)
+
+
+def decision_log(env: dict[str, str]) -> Path:
+    """Greenwash Live keeps records per run; other sessions share one log outside any repo."""
+    if env.get("GREENWASH_RUN_DIR"):
+        return Path(env["GREENWASH_RUN_DIR"]) / "decisions.jsonl"
+    return Path(env.get("GREENWASH_GUARD_LOG") or Path.home() / ".greenwash" / "guard" / "decisions.jsonl")
 
 
 def append_record(env: dict[str, str], record: Record) -> None:
-    run_dir = env.get("GREENWASH_RUN_DIR")
-    if not run_dir:
-        return
-    with (Path(run_dir) / "decisions.jsonl").open("a") as fh:
+    path = decision_log(env)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as fh:
         fh.write(json.dumps(record.as_json()) + "\n")
