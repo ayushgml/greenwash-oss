@@ -39,6 +39,15 @@
       <p class="form-error" id="form-error" role="alert"></p>
     </form>
 
+    <form id="bt-form" class="controls" hidden>
+      <h2 class="side-h">Jev Buildathon agent</h2>
+      <label class="field">Helix (ITSM) task
+        <select id="bt-task"></select>
+      </label>
+      <p class="mode-note">Runs the organisers' agent with their CLI and pinned model. The Greenwash ITSM policy judges each tool call.</p>
+      <button type="submit" class="run" id="bt-btn">Run agent task</button>
+    </form>
+
     <h2 class="side-h">History</h2>
     <ol class="history" id="history"><li class="empty">No runs yet.</li></ol>
   </aside>

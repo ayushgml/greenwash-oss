@@ -81,6 +81,7 @@ select { font: inherit; font-size: 15px; padding: 10px; min-height: 44px; backgr
 .chip.st-not_repaired, .chip.st-error, .chip.st-setup_error { background: var(--pink); border-color: var(--pink); color: #fff; font-weight: 700; }
 .chip.st-needs_human { border-style: dashed; border-color: var(--pink); color: var(--pink); font-weight: 700; }
 .chip.st-running, .chip.st-replaying { border-style: dotted; }
+.chip.st-completed { background: var(--ink); color: var(--paper); font-weight: 700; }
 
 .tabs { display: flex; gap: 4px; border-bottom: 1.5px solid var(--ink); }
 .tabs button { font: inherit; font-size: 14px; font-weight: 700; background: none; border: 0; padding: 10px 14px; min-height: 44px; color: var(--ink-2); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1.5px; }

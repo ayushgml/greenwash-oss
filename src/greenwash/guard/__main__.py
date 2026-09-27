@@ -15,13 +15,23 @@ from typesafe_sdk import AsyncTypeSafeClient, RetryPolicy
 
 from ..judge import TypeSafeJudge
 from .core import JUDGE_DEADLINE_S, Record, append_record, guard, load_context
+from .jev_source import resolve_judge
 
 
-def _judge_factory():
+def _typesafe_judge():
     model = os.environ.get("TYPESAFE_MODEL", "").strip() or "jev-latest"
     client = AsyncTypeSafeClient(timeout=JUDGE_DEADLINE_S, retry=RetryPolicy(max_retries=1, backoff_initial=0.3, timeout=JUDGE_DEADLINE_S)
     )
     return TypeSafeJudge(client, model=model)
+
+
+class _NoJev:
+    async def judge(self, state, questions):
+        raise RuntimeError("no Jev source: set TYPESAFE_API_KEY or connect Failproof Jev")
+
+
+def _judge_factory():
+    return resolve_judge(dict(os.environ), _typesafe_judge, timeout=JUDGE_DEADLINE_S) or _NoJev()
 
 
 def main() -> int:

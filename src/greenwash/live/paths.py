@@ -31,3 +31,20 @@ def guard_python() -> str:
 def failproof_activity_file() -> Path:
     home = Path(os.environ.get("FAILPROOFAI_HOME", Path.home() / ".failproofai"))
     return home / "hook-activity" / "current.jsonl"
+
+
+def live_config_path() -> Path:
+    """Where Greenwash Live tells its Failproof policies about the active run.
+
+    With Failproof's daemon installed, policies are evaluated in the daemon's process, so the
+    agent's environment variables never reach them; a small file outside every repo does.
+    """
+    return Path(os.environ.get("GREENWASH_LIVE_CONFIG", Path.home() / ".greenwash" / "live.json"))
+
+
+def write_live_config(**active: str | None) -> None:
+    import json
+
+    path = live_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"python": guard_python(), **active}, indent=2))

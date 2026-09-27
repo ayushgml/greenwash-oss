@@ -12,7 +12,7 @@ const MODE_NOTES = {
   lookalike: "A legitimate edit that looks similar. It must be allowed.",
 };
 const STATE_TEXT = { allow: "Allowed", deny: "Denied by Failproof", review: "Denied: needs human review", error: "Denied: judgment failed" };
-const STATUS_TEXT = { repaired: "Repaired", not_repaired: "Not repaired", needs_human: "Needs human", setup_error: "Setup error",
+const STATUS_TEXT = { completed: "Completed", repaired: "Repaired", not_repaired: "Not repaired", needs_human: "Needs human", setup_error: "Setup error",
                       error: "Error", running: "Running", replaying: "Replaying" };
 
 function h(tag, props = {}, ...kids) {
@@ -89,6 +89,7 @@ async function loadHistory() {
 function setBusy(busy) {
   S.busy = busy;
   $("run-btn").disabled = busy;
+  $("bt-btn").disabled = busy;
   $("run-btn").textContent = busy ? "Run in progress" : "Run repair";
 }
 
@@ -209,7 +210,7 @@ function handle(ev) {
       return;
     case "run_started": {
       $("run-title").textContent = ev.scenario.task_title;
-      const modeLabel = { natural: "Natural prompt", directed: "Directed prompt (labelled)", lookalike: "Look-alike check" }[ev.mode];
+      const modeLabel = { natural: "Natural prompt", directed: "Directed prompt (labelled)", lookalike: "Look-alike check", buildathon: "Organisers' agent (unmodified)" }[ev.mode];
       $("chips").append(h("span", { class: "chip", text: modeLabel }),
         h("span", { class: `chip ${S.replay ? "" : "solid"}`, text: S.replay ? "Recorded run" : "Live run" }),
         h("span", { class: "chip", text: `Run ${ev.run_id}` }));
@@ -263,6 +264,18 @@ function handle(ev) {
       if (ev.comment_url) $("pr").append(h("p", {}, h("a", { href: ev.comment_url, target: "_blank", rel: "noopener", text: "Open the report comment" })));
       return;
     }
+    case "buildathon_result": {
+      const row = (ok, text) => h("li", {}, h("span", { class: ok ? "y" : "n", "aria-hidden": "true", text: ok ? "•" : "⊘" }), h("span", { text }));
+      $("verify").replaceChildren(
+        ...ev.executed.map((t) => row(true, `ran: ${t}`)),
+        ...ev.blocked.map((t) => row(false, `blocked: ${t}`)),
+        ...(ev.executed.length || ev.blocked.length ? [] : [h("li", { class: "empty", text: "No tool calls." })]));
+      addStep("ok", "✓", h("div", { class: "card allow" },
+        h("div", { class: "card-top" }, h("strong", { text: "Agent finished" }), h("span", { class: "state ok", text: `${ev.executed.length} ran · ${ev.blocked.length} blocked` })),
+        h("p", { class: "reason", text: ev.final || "No final message." }),
+        h("p", { class: "meta", text: "Scored by the organisers from the uploaded session; not a Greenwash verdict." })));
+      return;
+    }
     case "pr_skipped": $("pr").replaceChildren(h("p", { class: "empty", text: ev.reason })); return;
     case "pr_error": $("pr").replaceChildren(h("p", { class: "n", text: `Pull request failed: ${ev.message}` })); return;
     case "error":
@@ -296,7 +309,7 @@ function onDecision(r) {
   S.step += 1;
   const card = h("button", { type: "button", class: `card ${r.decision}`, "aria-pressed": "false",
     "aria-label": `${r.tool} ${target}: ${STATE_TEXT[r.decision]}. Show Jev scores.`, onclick: () => select(r.attempt_id) },
-    h("div", { class: "card-top" }, h("strong", { text: `Agent tried to ${r.tool === "Write" ? "write" : "edit"} ${target}` }),
+    h("div", { class: "card-top" }, h("strong", { text: r.path ? `Agent tried to ${r.tool === "Write" ? "write" : "edit"} ${target}` : `Agent called ${r.tool}` }),
       h("span", { class: `state ${r.decision}`, text: STATE_TEXT[r.decision] })),
     diffBlock(r.diff),
     r.decision !== "allow" ? h("p", { class: "reason", text: r.reason }) : null,
@@ -382,4 +395,29 @@ function onVerification(v) {
     v.diff ? h("details", { class: "final" }, h("summary", { text: "Final patch" }), diffBlock(v.diff.split("\n").filter((l) => !/^(diff --git|index |--- |\+\+\+ )/.test(l)).join("\n"))) : h("p", { class: "note quiet", text: "No changes were made." })));
 }
 
-loadScenarios().then(() => { loadHealth(); loadHistory(); });
+async function loadBuildathon() {
+  try {
+    const data = await (await fetch("/api/buildathon/tasks")).json();
+    if (!data.available) return;
+    $("bt-task").replaceChildren(...data.tasks.map((t) => h("option", { value: t.id, text: `${t.task} · ${t.prompt.slice(0, 48)}` })));
+    $("bt-form").hidden = false;
+  } catch { /* the section stays hidden */ }
+}
+
+$("bt-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  $("form-error").textContent = "";
+  setBusy(true);
+  try {
+    const res = await fetch("/api/buildathon/runs", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task: $("bt-task").value }) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.detail || `Server returned ${res.status}`);
+    openStream(body.run_id);
+  } catch (err) {
+    $("form-error").textContent = `Task not started: ${err.message}`;
+    setBusy(false);
+  }
+});
+
+loadScenarios().then(() => { loadHealth(); loadHistory(); loadBuildathon(); });

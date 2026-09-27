@@ -18,7 +18,7 @@ from ..judge import Judge
 from . import pullrequest
 from . import sandbox as sb
 from .activity import read_activity
-from .paths import guard_python, runs_dir, sandbox_dir
+from .paths import guard_python, runs_dir, sandbox_dir, write_live_config
 from .router import LARGE, Route, route
 from .scenarios import Mode, Scenario
 from .verify import verify
@@ -214,6 +214,7 @@ class Runner:
         return base_sha
 
     async def _attempt(self, attempt: int, model: str, prompt: str) -> dict[str, Any]:
+        write_live_config(run_dir=str(self.run_dir), sandbox=str(self.sandbox))
         self.log.emit("attempt_started", attempt=attempt, model=model, command="claude -p … --model " + model,
                       prompt=prompt)
         proc = await asyncio.create_subprocess_exec(
@@ -225,6 +226,7 @@ class Runner:
         try:
             return await self._watch(attempt, model, proc)
         finally:
+            write_live_config(run_dir=None, sandbox=None)
             if proc.returncode is None:  # cancelled or crashed: never leave an agent writing
                 _kill(proc)
                 await proc.wait()

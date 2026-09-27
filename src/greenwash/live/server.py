@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from ..checks import BUILTIN_CHECKS, POSSIBLE_THRESHOLD
 from ..judge import Judge
 from .activity import read_activity
+from .buildathon import BuildathonRunner, buildathon_repo, list_tasks
 from .paths import STATIC_DIR, runs_dir
 from .runner import Runner
 from .scenarios import MODE_LABELS, MODES, load_scenarios
@@ -29,6 +30,10 @@ class RunRequest(BaseModel):
     scenario: str
     mode: str = "natural"
     open_pr: bool = False
+
+
+class BuildathonRequest(BaseModel):
+    task: str  # "<agent>:<task id>", e.g. "itsm:ITSM-02"
 
 
 def _version(args: list[str]) -> str | None:
@@ -88,6 +93,25 @@ def create_app(judge_factory: Callable[[], Judge]) -> FastAPI:
             raise HTTPException(409, "A run is already in progress. Wait for it to finish.")
         runner = Runner(catalog[request.scenario], request.mode, judge_factory,  # type: ignore[arg-type]
                         open_pr=request.open_pr)
+        state["runner"], state["task"] = runner, asyncio.create_task(runner.run())
+        return {"run_id": runner.run_id}
+
+    @app.get("/api/buildathon/tasks")
+    async def buildathon_tasks() -> dict[str, Any]:
+        repo = buildathon_repo()
+        return {"available": repo is not None, "tasks": list_tasks(repo) if repo else []}
+
+    @app.post("/api/buildathon/runs", status_code=202)
+    async def start_buildathon(request: BuildathonRequest) -> dict[str, str]:
+        repo = buildathon_repo()
+        if repo is None:
+            raise HTTPException(503, "Set GREENWASH_BUILDATHON_REPO to the jev-buildathon checkout.")
+        task = next((t for t in list_tasks(repo) if t["id"] == request.task), None)
+        if task is None:
+            raise HTTPException(404, f"unknown buildathon task {request.task}")
+        if busy():
+            raise HTTPException(409, "A run is already in progress. Wait for it to finish.")
+        runner = BuildathonRunner(repo, task["agent"], task["task"], task["prompt"])
         state["runner"], state["task"] = runner, asyncio.create_task(runner.run())
         return {"run_id": runner.run_id}
 

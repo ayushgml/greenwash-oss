@@ -6,13 +6,42 @@
 // here must return deny() explicitly. The spawn timeout (8s) stays under that limit.
 import { customPolicies, allow, deny } from "failproofai";
 import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join, relative, isAbsolute } from "node:path";
 
 const SPAWN_TIMEOUT_MS = 8000;
 
+// With Failproof's daemon, policies run in the daemon's process, so the agent's environment
+// never arrives here. Greenwash Live publishes the active run in a small file instead;
+// explicit environment variables still win when they are present.
+function liveConfig() {
+  const path = process.env.GREENWASH_LIVE_CONFIG || join(homedir(), ".greenwash", "live.json");
+  try {
+    return existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {};
+  } catch {
+    return {};
+  }
+}
+
+const inside = (dir, child) => {
+  if (!dir || !child) return false;
+  const rel = relative(dir, child);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+};
+
 function evaluate(ctx) {
-  const python = process.env.GREENWASH_PYTHON;
+  const cfg = liveConfig();
+  const python = process.env.GREENWASH_PYTHON || cfg.python;
   if (!python) {
-    return deny("Greenwash guard is not configured (GREENWASH_PYTHON is unset). Guarded actions are denied.");
+    return deny("Greenwash guard is not configured (no GREENWASH_PYTHON and no ~/.greenwash/live.json). Guarded actions are denied.");
+  }
+  const env = { ...process.env };
+  // Run context only for sessions inside the active run's sandbox; anything else uses the
+  // repo-independent transcript mode.
+  if (!env.GREENWASH_RUN_DIR && cfg.run_dir && cfg.sandbox && inside(cfg.sandbox, ctx.session?.cwd)) {
+    env.GREENWASH_RUN_DIR = cfg.run_dir;
+    env.GREENWASH_SANDBOX = cfg.sandbox;
   }
   const payload = JSON.stringify({
     toolName: ctx.toolName ?? null,
@@ -26,7 +55,7 @@ function evaluate(ctx) {
     input: payload,
     encoding: "utf8",
     timeout: SPAWN_TIMEOUT_MS,
-    env: process.env,
+    env,
     maxBuffer: 1024 * 1024,
   });
   if (result.error || result.status !== 0) {
