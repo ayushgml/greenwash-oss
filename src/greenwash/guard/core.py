@@ -15,7 +15,7 @@ from typing import Any
 from ..judge import Judge, build_questions, build_state
 from ..models import PullRequest
 from .bash import check_bash, looks_like_write
-from .policy import POLICY_VERSION, UNJUDGED_ALLOWED, Verdict, checks_for, decide, protected
+from .policy import POLICY_VERSION, Verdict, checks_for, decide, is_documentation, protected
 from .proposal import FILE_TOOLS, ProposalError, build_proposal
 
 JUDGE_DEADLINE_S = 5.0  # below the Failproof policy's 8s spawn timeout, itself below Failproof's 10s
@@ -122,8 +122,17 @@ async def guard(
         return _finish(record, Verdict("deny", f"{proposal.path} is guard configuration and cannot be edited."))
     if proposal.unchanged:
         return _finish(record, Verdict("allow", "The edit changes nothing."))
-    if proposal.file_kind in UNJUDGED_ALLOWED:
-        return _finish(record, Verdict("allow", f"{proposal.path} is not code, tests, or CI."))
+    if proposal.file_kind == "other":
+        if is_documentation(proposal.path):
+            return _finish(record, Verdict("allow", f"{proposal.path} is documentation, not code, tests, or CI."))
+        return _finish(
+            record,
+            Verdict(
+                "review",
+                f"{proposal.path} is not code, tests, or CI, so no Greenwash check can judge it, but it may "
+                "change how the code builds or runs. It needs human review in the guarded sandbox.",
+            ),
+        )
     if proposal.file_kind == "snapshot":
         return _finish(record, Verdict("review", "Snapshot/golden updates need human review in the guarded sandbox."))
     if any(h.truncated for h in proposal.hunks):

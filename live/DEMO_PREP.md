@@ -303,6 +303,7 @@ Helix `20260927-154607-3293` (ITSM-01), `20260927-154740-23bd` (ITSM-03), `20260
   band and failure handling, so behaviour is reviewable and never depends on free text.
 - **"What if the agent uses the shell to get around it?"** Shell commands outside a read/test
   allowlist are denied without a model call; the agent is told to use Edit, which we can inspect.
+  The allowlist covers options too: `pytest --basetemp=src` or `git diff --output=f` are denied.
 - **"What if the agent edits the tests' config to fake a pass?"** Verification ignores the agent's
   tests, `conftest.py`, pytest config and CI, and runs the originals.
 - **"Did you modify Helix?"** No. Only a file in `agents/itsm-agent/.failproofai/policies/`, which the

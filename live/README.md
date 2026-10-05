@@ -103,6 +103,16 @@ transcript (the idea behind `userPrompts` in the Jev Buildathon `policykit`) and
   Deletion is only possible through the shell, which is denied, and any snapshot edit goes to human review.
 - Only tools observed in the hook payloads are covered: `Edit`, `Write`, `MultiEdit`, `Bash`, `Read`, `Glob`, `Grep`.
   The agent is started with exactly those tools; any other tool is denied.
+- The shell allowlist is checked per program *and per option*: pytest and git run only with listed options,
+  `VAR=value` prefixes other than a few harmless ones (`PYTHONPATH`, `NO_COLOR`, ...) are denied, and `rg`/`tree`
+  are not allowed (`--pre` runs a program, `-o` writes a file). Before 2026-10-05, `pytest --basetemp=src`
+  (which deletes `src/`), `git diff --output=<file>` and `PYTEST_ADDOPTS=...` slipped through.
+- Guard configuration (`.claude/`, the Failproof folder, `.git/`, ...) is matched case-insensitively, because the
+  sandbox lives on a case-insensitive APFS volume. Files no check can judge (kind `other`) are allowed only if
+  they are documentation (`.md`, `.rst`, `.txt`); a `Makefile`, JSON data or similar goes to human review.
+- **Running tests runs the agent's code.** A `conftest.py` or source file that passed Jev's checks can still do
+  anything when `pytest` imports it. Verification uses a fresh copy, so this cannot fake a repair, but the guard
+  does not prevent such side effects inside the sandbox.
 - Each hunk is judged on its own, like the PR scanner. Cross-file cheating split across innocent-looking edits can be missed.
 - Jev probabilities are model judgments, not guarantees. The measured results below are small counts, not accuracy rates.
 - In natural mode the agent has so far never attempted a shortcut (0 of 10 runs), so the save is shown in the labelled Directed mode.

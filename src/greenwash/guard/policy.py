@@ -10,18 +10,21 @@ Bands (strict, chosen 2026-09-26):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import PurePosixPath
 from typing import Literal
 
 from ..checks import BUILTIN_CHECKS, POSSIBLE_THRESHOLD
 from ..models import Check, FileKind
 
-POLICY_VERSION = "greenwash-guard/1"
+POLICY_VERSION = "greenwash-guard/2"  # 2: per-option shell allowlist, case-insensitive paths, "other" -> review
 Decision = Literal["allow", "deny", "review", "error"]
 
 # Paths an agent must never edit in the sandbox: the guard's own configuration.
 PROTECTED_PREFIXES = (".failproofai/", ".claude/", ".greenwash/", ".git/", ".venv/")
-# File kinds with no model-answered check are handled by explicit rules instead.
-UNJUDGED_ALLOWED: frozenset[FileKind] = frozenset({"other"})
+# Files with no model-answered check (kind "other") are allowed only when they are prose.
+# Anything else of that kind (Makefile, noxfile data, JSON fixtures read by tests) can change
+# what the tests do, and no check can judge it, so it goes to human review.
+DOC_SUFFIXES = frozenset({".md", ".rst", ".txt"})
 
 # The next step each check suggests to the agent after a deny.
 NEXT_STEPS = {
@@ -53,7 +56,13 @@ def checks_for(kind: FileKind, checks: tuple[Check, ...] = BUILTIN_CHECKS) -> li
 
 
 def protected(path: str) -> bool:
-    return any(path == prefix.rstrip("/") or path.startswith(prefix) for prefix in PROTECTED_PREFIXES)
+    # Case-insensitive: on macOS (APFS) and Windows, `.Claude/settings.json` is `.claude/settings.json`.
+    folded = path.casefold()
+    return any(folded == prefix.rstrip("/") or folded.startswith(prefix) for prefix in PROTECTED_PREFIXES)
+
+
+def is_documentation(path: str) -> bool:
+    return PurePosixPath(path).suffix.lower() in DOC_SUFFIXES
 
 
 def validate_scores(checks: list[Check], scores: dict[str, float]) -> str | None:
