@@ -20,7 +20,7 @@ classifiers = [
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.141",
-    "githubkit[auth-app]>=0.16",
+    "githubkit[auth-app]>=0.16.1",
     "pydantic>=2.13",
     "pyyaml>=6.0",
     "typesafe-sdk>=0.6.0,<0.7",
@@ -42,7 +42,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.9.10,<0.10.0"]
+requires = ["uv_build>=0.12.13,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.pytest.ini_options]
