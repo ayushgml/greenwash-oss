@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-import msgspec
 from typesafe_sdk import Noul
 
 from ..judge import Judge, JudgeResult
@@ -40,7 +39,7 @@ class HttpJevJudge:
         body = {
             "model": self.model,
             "state": state,
-            "questions": {qid: {"type": "noul", **msgspec.to_builtins(q)} for qid, q in questions.items()},
+            "questions": {qid: q.model_dump(mode="json", by_alias=True, exclude_none=True) for qid, q in questions.items()},
         }
         async with httpx.AsyncClient(timeout=self.timeout, transport=self._transport) as client:
             response = await client.post(self.url, json=body, headers={"authorization": f"Bearer {self._key}"})
