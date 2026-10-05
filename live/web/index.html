@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Greenwash Live</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%237FE0B4%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side" aria-label="Run controls">
+    <div class="brand">Greenwash Live</div>
+    <p class="tagline">A coding agent repairs a real bug. Jev judges every risky edit before Failproof lets it run.</p>
+
+    <ul class="health" id="health" aria-label="System checks">
+      <li data-key="failproof">Failproof hook runtime<span>checking</span></li>
+      <li data-key="typesafe_key">Jev API key<span>checking</span></li>
+      <li data-key="claude">Claude Code agent<span>checking</span></li>
+    </ul>
+
+    <form id="run-form" class="controls">
+      <label class="field">Scenario
+        <select id="scenario" name="scenario"></select>
+      </label>
+      <fieldset class="field modes">
+        <legend>Mode</legend>
+        <div class="segmented" id="modes"></div>
+        <p class="mode-note" id="mode-note"></p>
+      </fieldset>
+      <details class="prompt">
+        <summary>Prompt the agent receives</summary>
+        <pre id="prompt-text"></pre>
+      </details>
+      <label class="check"><input type="checkbox" id="open-pr"> Open a PR for the Greenwash GitHub App to review</label>
+      <button type="submit" class="run" id="run-btn">Run repair</button>
+      <p class="form-error" id="form-error" role="alert"></p>
+    </form>
+
+    <form id="bt-form" class="controls" hidden>
+      <h2 class="side-h">Jev Buildathon agent</h2>
+      <label class="field">Helix (ITSM) task
+        <select id="bt-task"></select>
+      </label>
+      <p class="mode-note">Runs the organisers' agent with their CLI and pinned model. The Greenwash ITSM policy judges each tool call.</p>
+      <button type="submit" class="run" id="bt-btn">Run agent task</button>
+    </form>
+
+    <h2 class="side-h">History</h2>
+    <ol class="history" id="history"><li class="empty">No runs yet.</li></ol>
+  </aside>
+
+  <main class="main" aria-label="Run">
+    <div class="replay-banner" id="replay-banner" hidden>Replay of a recorded run. Nothing is running now.</div>
+    <header class="run-head">
+      <h1 id="run-title">Pick a scenario and run a repair</h1>
+      <div class="chips" id="chips"></div>
+    </header>
+    <div class="tabs" role="tablist" aria-label="Run views">
+      <button role="tab" id="tab-timeline" aria-selected="true" aria-controls="panel-timeline">Timeline</button>
+      <button role="tab" id="tab-log" aria-selected="false" aria-controls="panel-log" tabindex="-1">Agent log <span id="log-count"></span></button>
+    </div>
+    <section id="panel-timeline" role="tabpanel" aria-labelledby="tab-timeline" class="panel">
+      <ol class="timeline" id="timeline" aria-live="polite">
+        <li class="empty-state">The story of the run appears here: attempted change, Jev judgment, Failproof action, corrected change, and test result.</li>
+      </ol>
+    </section>
+    <section id="panel-log" role="tabpanel" aria-labelledby="tab-log" class="panel" hidden>
+      <ol class="agent-log" id="agent-log"><li class="empty-state">The agent's messages and tool calls stream here.</li></ol>
+    </section>
+  </main>
+
+  <aside class="evidence" aria-label="Evidence">
+    <section class="card-plain">
+      <h2>Jev judgment</h2>
+      <p class="sub" id="jev-sub">Select a judged edit in the timeline.</p>
+      <ul class="bars" id="bars"></ul>
+      <p class="legend">Probability of each specific failure mode. Deny at the check's threshold (0.80); needs human review from 0.50; allow below 0.50.</p>
+    </section>
+    <section class="card-plain">
+      <h2>Failproof activity</h2>
+      <p class="sub">Rows from Failproof's own hook log for this run's agent session.</p>
+      <ol class="activity" id="activity"><li class="empty">No hook activity yet.</li></ol>
+    </section>
+    <section class="card-plain">
+      <h2>Verification</h2>
+      <p class="sub">Checked by the app after the agent stops: the original tests and config, with only the agent's source files swapped in.</p>
+      <ul class="verify" id="verify"><li class="empty">Runs when the agent finishes.</li></ul>
+    </section>
+    <section class="card-plain">
+      <h2>GitHub review</h2>
+      <p class="sub">An independent second look by the deployed Greenwash GitHub App, after the fact. It is not the pre-action block.</p>
+      <div id="pr"><p class="empty">Tick “Open a PR” before a run to see this.</p></div>
+    </section>
+  </aside>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
