@@ -19,11 +19,11 @@ classifiers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.141",
+    "fastapi>=0.162.0",
     "githubkit[auth-app]>=0.16.1",
-    "pydantic>=2.13",
+    "pydantic>=2.14.1",
     "pyyaml>=6.0",
-    "typesafe-sdk>=0.7.2,<0.8",
+    "typesafe-sdk>=0.7.5,<0.8",
     "uvicorn>=0.54.0",
 ]
 
@@ -37,12 +37,12 @@ Changelog = "https://github.com/ayushgml/greenwash-oss/blob/main/CHANGELOG.md"
 dev = [
     "httpx>=0.28",
     "pytest>=9.1",
-    "pytest-asyncio>=1.4",
+    "pytest-asyncio>=1.4.1",
     "respx>=0.23",
 ]
 
 [build-system]
-requires = ["uv_build>=0.12.19,<0.13.0"]
+requires = ["uv_build>=0.13.5,<0.14.0"]
 build-backend = "uv_build"
 
 [tool.pytest.ini_options]
